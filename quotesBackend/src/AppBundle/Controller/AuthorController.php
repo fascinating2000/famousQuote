@@ -3,9 +3,11 @@
 namespace AppBundle\Controller;
 
 use AppBundle\Entity\Author;
+use Doctrine\ORM\Query;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -16,102 +18,110 @@ class AuthorController extends Controller
 {
     /**
      * Lists all author entities.
-     * @Route("/author", name="author_index")
+     * @Route("/authors", name="author_index")
      * @Method("GET")
      */
     public function indexAction()
     {
-        $em = $this->getDoctrine()->getManager();
+        $query = $this->getDoctrine()
+            ->getRepository('AppBundle:Author')
+            ->findAll();
 
-        $authors = $em->getRepository('AppBundle:Author')->findAll();
+        $response = $this->get('serializer')->serialize($query, 'json');
 
-        return $this->render('author/index.html.twig', array(
-            'authors' => $authors,
-        ));
+        return $this->json(json_decode($response, true));
     }
 
     /**
      * Creates a new author entity.
-     * @Route("/author/new", name="author_new")
-     * @Method({"GET", "POST"})
+     * @Route("/authors", name="author_new")
+     * @Method("POST")
      */
     public function newAction(Request $request)
     {
+        $response = new Response();
+
+        $authorName = $request->request->get('authorName');
+
+        if (empty($authorName))
+            return $response->setStatusCode(Response::HTTP_NO_CONTENT);
+
         $author = new Author();
-        $form = $this->createForm('AppBundle\Form\AuthorType', $author);
-        $form->handleRequest($request);
+        $author->setAuthorName($authorName);
+        $em = $this->getDoctrine()->getManager();
+        $em->persist($author);
 
-        if ($form->isSubmitted()) {
-            $em = $this->getDoctrine()->getManager();
-            $em->persist($author);
+        $em->flush();
 
-            $em->flush();
 
-            return $this->redirectToRoute('author_show', array('id' => $author->getId()));
-        }
+        $response->setStatusCode(Response::HTTP_CREATED);
 
-        return $this->render('author/new.html.twig', array(
-            'author' => $author,
-            'form' => $form->createView(),
-        ));
+        return $response;
     }
 
     /**
      * Finds and displays a author entity.
-     * @Route("/author/{id}/show", requirements={"id": "\d+"}, name="author_show")
+     * @Route("/authors/{author_id}", name="author_show")
      * @Method("GET")
      */
-    public function showAction(Author $author)
+    public function showAction($author_id)
     {
-        $deleteForm = $this->createDeleteForm($author);
+        $author = $this->getDoctrine()
+            ->getRepository('AppBundle:Author')
+            ->find($author_id);
 
-        return $this->render('author/show.html.twig', array(
-            'author' => $author,
-            'delete_form' => $deleteForm->createView(),
-        ));
+        $response = $this->get('serializer')->serialize($author, 'json');
+
+        return $this->json(json_decode($response, true));
     }
 
     /**
      * Displays a form to edit an existing author entity.
-     * @Route("/author/{id}/edit", requirements={"id": "\d+"}, name="author_edit")
-     * @Method({"GET", "POST"})
+     * @Route("/authors/{author_id}", name="author_edit")
+     * @Method({"POST", "PUT", "PATCH"})
      */
-    public function editAction(Request $request, Author $author)
+    public function editAction(Request $request, $author_id)
     {
-        $deleteForm = $this->createDeleteForm($author);
-        $editForm = $this->createForm('AppBundle\Form\AuthorType', $author);
-        $editForm->handleRequest($request);
+        $response = new Response();
 
-        if ($editForm->isSubmitted() && $editForm->isValid()) {
-            $this->getDoctrine()->getManager()->flush();
+        $authorName = $request->request->get('authorName');
 
-            return $this->redirectToRoute('author_edit', array('id' => $author->getId()));
-        }
+        if (empty($authorName))
+            return $response->setStatusCode(Response::HTTP_NO_CONTENT);
 
-        return $this->render('author/edit.html.twig', array(
-            'author' => $author,
-            'edit_form' => $editForm->createView(),
-            'delete_form' => $deleteForm->createView(),
-        ));
+        $author = $this->getDoctrine()
+            ->getRepository('AppBundle:Author')
+            ->find($author_id);
+        $author->setAuthorName($authorName);
+        $em = $this->getDoctrine()->getManager();
+        $em->persist($author);
+
+        $em->flush();
+
+        return $response->setStatusCode(Response::HTTP_OK);
     }
 
     /**
      * Deletes a author entity.
-     * @Route("/author/{id}/delete", name="author_delete")
+     * @Route("/authors/{author_id}", name="author_delete")
      * @Method("DELETE")
      */
-    public function deleteAction(Request $request, Author $author)
+    public function deleteAction($author_id)
     {
-        $form = $this->createDeleteForm($author);
-        $form->handleRequest($request);
+        $author = $this->getDoctrine()
+            ->getRepository('AppBundle:Author')
+            ->find($author_id);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em = $this->getDoctrine()->getManager();
-            $em->remove($author);
-            $em->flush();
-        }
+        $quotes = $this->getDoctrine()
+            ->getRepository('AppBundle:Quote')
+            ->findBy(array('author' => $author));
 
-        return $this->redirectToRoute('author_index');
+        $em = $this->getDoctrine()->getManager();
+        $em->remove($author);
+        $em->remove($quotes);
+        $em->flush();
+
+        return $this->json(array('status' => 'success'));
     }
 
     /**

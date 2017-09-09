@@ -6,47 +6,98 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class QuoteControllerTest extends WebTestCase
 {
-    public function testCompleteScenario()
+    public function testQuoteIndex()
+    {
+        // Create a new client to browse the application
+        $client = static::createClient();
+        // Send request for get all quotes
+        $respnose = $client->request('GET', '/quote/');
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for GET /quote/");
+        $this->assertInternalType('array', $client->getResponse()->getContent());
+    }
+
+    public function testAuthorQuoteIndex()
+    {
+        // Create a new client to browse the application
+        $client = static::createClient();
+        // Send request for get all quotes for author
+        $respnose = $client->request('GET', '/author/1');
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for GET /author/{author_id");
+        $this->assertInternalType('array', $client->getResponse()->getContent());
+    }
+
+    public function testQuotePull()
+    {
+        // Create a new client to browse the application
+        $client = static::createClient();
+        // Send request for get a quote
+        $respnose = $client->request('GET', '/quote/1');
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for GET /quote/1");
+        $this->assertInternalType('object', $client->getResponse()->getContent());
+    }
+
+    public function testQuoteNew()
+    {
+        // Create a new client to browse the application
+        $client = static::createClient();
+        $dataSucess = array(
+            'authorName' => 'Test',
+            'quoteContent' => 'Test'
+        );
+        // Send request for add quote
+        $client->post('/quote', null, json_encode($dataSucess));
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for POST /quote/");
+
+        $dataFail = array(
+            'authorName' => 'Test'
+        );
+        // Send request for add quote
+        $client->post('/quote', null, json_encode($dataFail));
+        $this->assertEquals(204, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for POST /quote/");
+    }
+
+    public function testQuoteEdit()
+    {
+        // Create a new client to browse the application
+        $client = static::createClient();
+        $dataSucess = array(
+            'authorName' => 'Test',
+            'quoteContent' => 'Test'
+        );
+        // Send request for edit quote
+        $client->post('/quote/1', null, json_encode($dataSucess));
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for POST /quote/{quote_id");
+
+        $dataFail = array(
+            'authorName' => 'Test'
+        );
+        // Send request for edit quote
+        $client->post('/quote/1', null, json_encode($dataFail));
+        $this->assertEquals(204, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for POST /quote/{quote_id}");
+    }
+
+    public function testQuoteDelete()
     {
         // Create a new client to browse the application
         $client = static::createClient();
 
-        // Create a new entry in the database
-        $crawler = $client->request('GET', '/quote/');
-        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for GET /quote/");
-        $crawler = $client->click($crawler->selectLink('Create a new entry')->link());
+        // Send request for delete quote
+        $client->delete('/quote/1');
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for DELETE /quote/{quote_id}");
 
-        // Fill in the form and submit it
-        $form = $crawler->selectButton('Create')->form(array(
-            'appbundle_quote[field_name]'  => 'Test',
-            // ... other fields to fill
-        ));
+        $dataFail = array();
+        // Send request for delete quote
+        $client->post('/quote/', null, json_encode($dataFail));
+        $this->assertEquals(400, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for DELETE /authors/{quote_id");
+    }
 
-        $client->submit($form);
-        $crawler = $client->followRedirect();
-
-        // Check data in the show view
-        $this->assertGreaterThan(0, $crawler->filter('td:contains("Test")')->count(), 'Missing element td:contains("Test")');
-
-        // Edit the entity
-        $crawler = $client->click($crawler->selectLink('Edit')->link());
-
-        $form = $crawler->selectButton('Update')->form(array(
-            'appbundle_quote[field_name]'  => 'Foo',
-            // ... other fields to fill
-        ));
-
-        $client->submit($form);
-        $crawler = $client->followRedirect();
-
-        // Check the element contains an attribute with value equals "Foo"
-        $this->assertGreaterThan(0, $crawler->filter('[value="Foo"]')->count(), 'Missing element [value="Foo"]');
-
-        // Delete the entity
-        $client->submit($crawler->selectButton('Delete')->form());
-        $crawler = $client->followRedirect();
-
-        // Check the entity has been delete on the list
-        $this->assertNotRegExp('/Foo/', $client->getResponse()->getContent());
+    public function testQuoteRandom()
+    {
+        // Create a new client to browse the application
+        $client = static::createClient();
+        // Send request for get a random quote
+        $respnose = $client->request('GET', '/quoteRandom/');
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for GET /quoteRandom/");
+        $this->assertInternalType('object', $client->getResponse()->getContent());
     }
 }

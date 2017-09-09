@@ -3,49 +3,76 @@
 namespace AppBundle\Tests\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Bridge\PhpUnit;
 
 class AuthorControllerTest extends WebTestCase
 {
-    public function testCompleteScenario()
+    public function testAuthorIndex()
     {
         // Create a new client to browse the application
         $client = static::createClient();
-        // Create a new entry in the database
-        $crawler = $client->request('GET', '/author/');
-        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for GET /author/");
-        $crawler = $client->click($crawler->selectLink('Create a new entry')->link());
+        // Send request for get all authors
+        $respnose = $client->request('GET', '/authors/');
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for GET /authors/");
+        $this->assertInternalType('array', $client->getResponse()->getContent());
+    }
 
-        // Fill in the form and submit it
-        $form = $crawler->selectButton('Create')->form(array(
-            'appbundle_author[field_name]'  => 'Test',
-            // ... other fields to fill
-        ));
+    public function testAuthorShow()
+    {
+        // Create a new client to browse the application
+        $client = static::createClient();
+        // Send request for exact author
+        $client->request('GET', '/authors/1');
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for GET /authors/{author_id}");
+        $this->assertInternalType('object', $client->getResponse()->getContent());
+    }
 
-        $client->submit($form);
-        $crawler = $client->followRedirect();
+    public function testAuthorNew()
+    {
+        // Create a new client to browse the application
+        $client = static::createClient();
+        $dataSucess = array(
+          'authorName' => 'Test'
+        );
+        // Send request for add author
+        $client->post('/authors', null, json_encode($dataSucess));
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for POST /authors/");
 
-        // Check data in the show view
-        $this->assertGreaterThan(0, $crawler->filter('td:contains("Test")')->count(), 'Missing element td:contains("Test")');
+        $dataFail = array();
+        // Send request for add author
+        $client->post('/authors', null, json_encode($dataFail));
+        $this->assertEquals(204, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for POST /authors/");
+    }
 
-        // Edit the entity
-        $crawler = $client->click($crawler->selectLink('Edit')->link());
+    public function testAuthorEdit()
+    {
+        // Create a new client to browse the application
+        $client = static::createClient();
+        $dataSucess = array(
+            'authorName' => 'Test'
+        );
+        // Send request for edit author
+        $client->post('/authors/1', null, json_encode($dataSucess));
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for POST /authors/{author_id");
 
-        $form = $crawler->selectButton('Update')->form(array(
-            'appbundle_author[field_name]'  => 'Foo',
-            // ... other fields to fill
-        ));
+        $dataFail = array();
+        // Send request for edit author
+        $client->post('/authors/1', null, json_encode($dataFail));
+        $this->assertEquals(204, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for POST /authors/{author_id");
+    }
 
-        $client->submit($form);
-        $crawler = $client->followRedirect();
+    public function testAuthorDelete()
+    {
+        // Create a new client to browse the application
+        $client = static::createClient();
 
-        // Check the element contains an attribute with value equals "Foo"
-        $this->assertGreaterThan(0, $crawler->filter('[value="Foo"]')->count(), 'Missing element [value="Foo"]');
+        // Send request for delete author
+        $client->delete('/authors/1');
+        $this->assertEquals(200, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for DELETE /authors/{author_id");
 
-        // Delete the entity
-        $client->submit($crawler->selectButton('Delete')->form());
-        $crawler = $client->followRedirect();
-
-        // Check the entity has been delete on the list
-        $this->assertNotRegExp('/Foo/', $client->getResponse()->getContent());
+        $dataFail = array();
+        // Send request for delete author
+        $client->post('/authors/', null, json_encode($dataFail));
+        $this->assertEquals(400, $client->getResponse()->getStatusCode(), "Unexpected HTTP status code for DELETE /authors/{author_id");
     }
 }
